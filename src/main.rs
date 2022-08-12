@@ -27,7 +27,7 @@ struct IndexInfo {
     term: String,
 }
 struct IndexManager {
-    index: HashMap<String, Arc<Mutex<VecDeque<index_engine::IndexEngine>>>>,
+    index: HashMap<String, Arc<Mutex<index_engine::IndexEngine>>>,
 }
 // stats route per index:
 // top queries with more results, top queries w/o result, top queries with less results
@@ -72,7 +72,7 @@ async fn search_index(
 
     match index {
         Some(vect) => match vect.lock() {
-            Ok(mut v) => match v.pop_front() {
+            Ok(mut v) => match v.search(info.term) {
                 Some(mut payload) => {
                     let bb = payload.search(info.term.clone());
                     return Ok(HttpResponse::Ok().content_type("application/json").body(bb));
@@ -109,17 +109,12 @@ async fn index_document(
     let mut data = data.lock().unwrap();
     let index = data.index.get(&info.index);
 
-    //let uuid = Uuid::new_v4();
-    // let payload = QueueMessage {
-    //     id: uuid,
-    //     body: req_body.clone(),
-    //     created_at: SystemTime::now(),
-    // };
-    let json_payload = serde_json::to_value(&req_body.clone());
+    
+    //let json_payload = serde_json::to_value(&req_body.clone());
 
     match index {
         Some(vect) => match vect.lock() {
-            Ok(mut v) => v.push_back(json_payload.unwrap().to_string()),
+            Ok(mut v) => v.index_string_document(req_body.clone()),
             Err(e) => {
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
@@ -127,24 +122,11 @@ async fn index_document(
             }
         },
         None => {
-            match data
+            data
                 .index
-                .insert(info.index.clone(), Arc::new(Mutex::new(VecDeque::new())))
-            {
-                Some(qq) => qq
-                    .lock()
-                    .unwrap()
-                    .push_back(json_payload.as_ref().unwrap().to_string()),
-                None => (),
-            }
-            match data.index.get(&info.index) {
-                Some(vl) => vl
-                    .clone()
-                    .lock()
-                    .unwrap()
-                    .push_back(json_payload.as_ref().unwrap().clone().to_string()),
-                None => (),
-            }
+                .insert(info.index.clone(), 
+                Arc::new(Mutex::new(index_engine::IndexEngine::new(req_body.clone(), req_body.clone())))).unwrap();
+                ()
         }
     }
     Ok(HttpResponse::Ok()
