@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 pub struct IndexEngine {
+    path: String,
     name: String,
     version: Uuid,
     db_connection: sqlite::Connection,
@@ -21,20 +22,24 @@ struct Resultset {
 
 impl IndexEngine {
     pub fn new_blank_index(name: String) -> Self {
+        let path = format!("{}.db", name);
         let ie = IndexEngine {
+            path: path.clone(),
             name: name,
             version: Uuid::new_v4(),
-            db_connection: sqlite::open(":memory:").unwrap(), // temp config
+            db_connection: sqlite::open(path.clone()).unwrap(), // temp config
             created_at: Local::now().timestamp_millis(),
         };
         ie
         // ie.create_schema();
     } // new index engine
     pub fn new(name: String, doc: String) -> Self {
+        let path = format!("{}.db", name);
         let mut ie = IndexEngine {
+            path: path.clone(),
             name: name,
             version: Uuid::new_v4(),
-            db_connection: sqlite::open(":memory:").unwrap(), // temp config
+            db_connection: sqlite::open(path.clone()).unwrap(), // temp config
             created_at: Local::now().timestamp_millis(),
         };
         // let result = json::parse(&doc); //std::str::from_utf8(&doc).unwrap());
