@@ -72,15 +72,16 @@ async fn search_index(
 
     match index {
         Some(vect) => match vect.lock() {
-            Ok(mut v) => match v.search(info.term) {
-                Some(mut payload) => {
-                    let bb = payload.search(info.term.clone());
-                    return Ok(HttpResponse::Ok().content_type("application/json").body(bb));
+            Ok(mut v) => match v.search(info.term.clone()) {
+                Ok(mut payload) => {
+                    return Ok(HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(payload));
                 }
-                None => {
+                Err(e) => {
                     return Ok(HttpResponse::NoContent()
                         .content_type("application/json")
-                        .body(""))
+                        .body(e.to_string()))
                 }
             },
             Err(e) => {
@@ -109,7 +110,6 @@ async fn index_document(
     let mut data = data.lock().unwrap();
     let index = data.index.get(&info.index);
 
-    
     //let json_payload = serde_json::to_value(&req_body.clone());
 
     match index {
@@ -122,11 +122,16 @@ async fn index_document(
             }
         },
         None => {
-            data
-                .index
-                .insert(info.index.clone(), 
-                Arc::new(Mutex::new(index_engine::IndexEngine::new(req_body.clone(), req_body.clone())))).unwrap();
-                ()
+            data.index
+                .insert(
+                    info.index.clone(),
+                    Arc::new(Mutex::new(index_engine::IndexEngine::new(
+                        req_body.clone(),
+                        req_body.clone(),
+                    ))),
+                )
+                .unwrap();
+            ()
         }
     }
     Ok(HttpResponse::Ok()

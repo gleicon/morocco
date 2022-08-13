@@ -1,11 +1,11 @@
 // index interface
 use chrono::Local;
-use json::JsonValue;
 use json::object;
+use json::JsonValue;
+use serde::{Deserialize, Serialize};
 use sqlite;
-use uuid::Uuid;
 use std::collections::HashMap;
-use serde::Deserialize;
+use uuid::Uuid;
 
 pub struct IndexEngine {
     name: String,
@@ -13,10 +13,10 @@ pub struct IndexEngine {
     db_connection: sqlite::Connection,
     created_at: i64,
 }
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct Resultset {
     count: i64,
-    rows: HashMap<String, String>
+    rows: HashMap<String, String>,
 }
 
 impl IndexEngine {
@@ -31,7 +31,7 @@ impl IndexEngine {
         // ie.create_schema();
     } // new index engine
     pub fn new(name: String, doc: String) -> Self {
-        let ie = IndexEngine {
+        let mut ie = IndexEngine {
             name: name,
             version: Uuid::new_v4(),
             db_connection: sqlite::open(":memory:").unwrap(), // temp config
@@ -41,10 +41,9 @@ impl IndexEngine {
         ie.create_schema_from_string(doc);
 
         ie
-       
     } // new index engine
 
-    pub fn search(&mut self, qs: String) -> Result<String, String> {
+    pub fn search(&mut self, qs: String) -> Result<String, serde_json::Error> {
         let query = format!("SELECT * FROM ? WHERE {} MATCH ?", self.name);
 
         // let mut scursor = self
@@ -57,7 +56,7 @@ impl IndexEngine {
         //         Value::String("\"fts5\"".to_string()),
         //     ])
         //     .unwrap();
-       
+
         // // let results = 0;
         // // let Resultset
         // scursor.
@@ -66,16 +65,21 @@ impl IndexEngine {
         //     println!("Body = {}", row.get::<String, _>(1));
         // }
 
-        let mut rs = Resultset {count: 0, rows: HashMap::new()};
-        self.db_connection.iterate(query, |pairs| {
-            for &(column, value) in pairs.iter() {
-                rs.rows.insert(column.to_string(), value.unwrap().to_string());
-                rs.count+=1;
-            }
-            true
-        }).unwrap();
+        let mut rs = Resultset {
+            count: 0,
+            rows: HashMap::new(),
+        };
+        self.db_connection
+            .iterate(query, |pairs| {
+                for &(column, value) in pairs.iter() {
+                    rs.rows
+                        .insert(column.to_string(), value.unwrap().to_string());
+                    rs.count += 1;
+                }
+                true
+            })
+            .unwrap();
         serde_json::to_string(&rs)
-        
     }
 
     pub fn create_standard_schema_index(&mut self) {
@@ -87,10 +91,9 @@ impl IndexEngine {
         self.db_connection.execute(create_statement).unwrap();
     } //creates a standard (title,body) index
 
-
     pub fn index_string_document(&mut self, body: String) {
         let doc = json::parse(&body).unwrap();
-        
+
         self.index_jsonvalue(doc)
     }
 
@@ -109,7 +112,6 @@ impl IndexEngine {
             attribute_list.join(","),
             value_list.into_iter().collect::<Vec<String>>().join(",")
         );
-
 
         self.db_connection.execute(insert_statement).unwrap();
     }
@@ -135,8 +137,8 @@ impl IndexEngine {
 
     pub fn create_schema_from_string(&mut self, body: String) {
         match json::parse(&body) {
-            Ok(v) =>  self.create_schema_from_json(v),
-            Err(e) => info!("{:?}", e.to_string()) 
+            Ok(v) => self.create_schema_from_json(v),
+            Err(e) => info!("{:?}", e.to_string()),
         };
     }
 }
