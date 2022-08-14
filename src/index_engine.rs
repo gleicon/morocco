@@ -1,11 +1,16 @@
 // index interface
 use chrono::Local;
-use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use std::collections::HashMap;
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+
+pub struct IndexManager {
+    pub index: HashMap<String, Arc<Mutex<IndexEngine>>>,
+}
 
 pub struct IndexEngine {
     path: String,

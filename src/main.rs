@@ -1,6 +1,5 @@
 use actix_web::{get, post, Error, Result};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use json::JsonValue;
 use serde::Deserialize;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, collections::VecDeque};
@@ -9,6 +8,12 @@ mod index_engine;
 
 #[macro_use]
 extern crate log;
+
+#[derive(Deserialize)]
+pub struct IndexInfo {
+    index: String,
+    term: String,
+}
 
 #[derive(Deserialize, Clone)]
 struct PathInfo {
@@ -21,19 +26,12 @@ json attributes -> fts5 table
 
 */
 // URI index name and query term
-#[derive(Deserialize)]
-struct IndexInfo {
-    index: String,
-    term: String,
-}
 
 #[derive(Deserialize)]
 struct DocumentInfo {
     index: String,
 }
-struct IndexManager {
-    index: HashMap<String, Arc<Mutex<index_engine::IndexEngine>>>,
-}
+
 // stats route per index:
 // top queries with more results, top queries w/o result, top queries with less results
 // top terms
@@ -70,7 +68,7 @@ struct IndexManager {
 #[get("/i/{index}/{term}")]
 async fn search_index(
     info: web::Path<IndexInfo>,
-    data: web::Data<Mutex<IndexManager>>,
+    data: web::Data<Mutex<index_engine::IndexManager>>,
 ) -> Result<HttpResponse, Error> {
     let data = data.lock().unwrap();
     let index = data.index.get(&info.index);
@@ -110,7 +108,7 @@ async fn search_index(
 async fn index_document(
     req_body: String,
     info: web::Path<DocumentInfo>,
-    data: web::Data<Mutex<IndexManager>>,
+    data: web::Data<Mutex<index_engine::IndexManager>>,
 ) -> Result<HttpResponse, Error> {
     let mut data = data.lock().unwrap();
     let index = data.index.get(&info.index);
@@ -160,7 +158,7 @@ async fn main() -> std::io::Result<()> {
     );
     env_logger::init();
     info!("Morocco search");
-    let data = web::Data::new(Mutex::new(IndexManager {
+    let data = web::Data::new(Mutex::new(index_engine::IndexManager {
         index: HashMap::new(),
     }));
 
