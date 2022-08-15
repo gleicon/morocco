@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 pub struct IndexEngine {
-    path: String,
+    path: PathBuf,
     name: String,
     version: Uuid,
     db_connection: sqlite::Connection,
@@ -26,7 +26,7 @@ struct Resultset {
 impl IndexEngine {
     pub fn to_json(&mut self) -> Result<String, String> {
         let out = object! {
-            path: self.path.clone(),
+            path: self.path.clone().into_os_string().into_string().unwrap(),
             name: self.name.clone(),
             version: self.version.clone().to_string(),
             created_at: self.created_at.clone(),
@@ -38,10 +38,10 @@ impl IndexEngine {
     pub fn load_or_create_index(mut path: PathBuf, name: String) -> Self {
         path.push(format!("{}.db", name));
         let ie = IndexEngine {
-            path: path.clone().into_os_string().into_string().unwrap(),
+            path: path.clone(),
             name: name,
             version: Uuid::new_v4(),
-            db_connection: sqlite::open(path.clone()).unwrap(), // temp config
+            db_connection: sqlite::open(path.clone()).unwrap(),
             created_at: Local::now().timestamp_millis(),
             attribute_list: Vec::new(),
         };
@@ -49,15 +49,6 @@ impl IndexEngine {
     } // new index engine
 
     pub fn new(path: PathBuf, name: String, doc: String) -> Self {
-        // let path = format!("{}.db", name);
-        // let mut ie = IndexEngine {
-        //     path: path.clone(),
-        //     name: name,
-        //     version: Uuid::new_v4(),
-        //     db_connection: sqlite::open(path.clone()).unwrap(), // temp config
-        //     created_at: Local::now().timestamp_millis(),
-        //     attribute_list: Vec::new(),
-        // };
         let mut ie = IndexEngine::load_or_create_index(path, name);
         ie.create_schema_from_string(doc);
 
