@@ -63,8 +63,8 @@ async fn search_index(
     let index = data.index.get(&info.index);
 
     match index {
-        Some(vect) => match vect.lock() {
-            Ok(mut v) => match v.search(info.term.clone()) {
+        Some(indexengine) => match indexengine.lock() {
+            Ok(mut ie) => match ie.search(info.term.clone()) {
                 Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
@@ -80,7 +80,7 @@ async fn search_index(
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
                     .body(format!(
-                        "msg: err fetching message from topic {:?} -  {:?}",
+                        "msg: err fetching data from index {:?} -  {:?}",
                         info.index, e
                     )))
             }
