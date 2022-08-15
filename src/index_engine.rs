@@ -6,6 +6,7 @@ use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use uuid::Uuid;
 
 pub struct IndexEngine {
@@ -34,30 +35,30 @@ impl IndexEngine {
         Ok(out.dump())
     }
 
-    // pub fn new_blank_index(name: String) -> Self {
-    //     let path = format!("{}.db", name);
-    //     let ie = IndexEngine {
-    //         path: path.clone(),
-    //         name: name,
-    //         version: Uuid::new_v4(),
-    //         db_connection: sqlite::open(path.clone()).unwrap(), // temp config
-    //         created_at: Local::now().timestamp_millis(),
-    //         attribute_list: Vec::new(),
-    //     };
-    //     ie
-    // } // new index engine
-
-    pub fn new(name: String, doc: String) -> Self {
-        let path = format!("{}.db", name);
-        let mut ie = IndexEngine {
-            path: path.clone(),
+    pub fn load_or_create_index(mut path: PathBuf, name: String) -> Self {
+        path.push(format!("{}.db", name));
+        let ie = IndexEngine {
+            path: path.clone().into_os_string().into_string().unwrap(),
             name: name,
             version: Uuid::new_v4(),
             db_connection: sqlite::open(path.clone()).unwrap(), // temp config
             created_at: Local::now().timestamp_millis(),
             attribute_list: Vec::new(),
         };
+        ie
+    } // new index engine
 
+    pub fn new(path: PathBuf, name: String, doc: String) -> Self {
+        // let path = format!("{}.db", name);
+        // let mut ie = IndexEngine {
+        //     path: path.clone(),
+        //     name: name,
+        //     version: Uuid::new_v4(),
+        //     db_connection: sqlite::open(path.clone()).unwrap(), // temp config
+        //     created_at: Local::now().timestamp_millis(),
+        //     attribute_list: Vec::new(),
+        // };
+        let mut ie = IndexEngine::load_or_create_index(path, name);
         ie.create_schema_from_string(doc);
 
         ie

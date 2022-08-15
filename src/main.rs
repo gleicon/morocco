@@ -1,5 +1,4 @@
 use actix_web::{middleware, web, App, HttpServer};
-use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod handlers;
@@ -17,9 +16,9 @@ async fn main() -> std::io::Result<()> {
     );
     env_logger::init();
     info!("Morocco search");
-    let data = web::Data::new(Mutex::new(index_manager::IndexManager {
-        index: HashMap::new(),
-    }));
+    let data = web::Data::new(Mutex::new(index_manager::IndexManager::new(
+        std::env::current_dir().unwrap(),
+    )));
 
     HttpServer::new(move || {
         App::new()

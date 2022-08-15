@@ -113,10 +113,10 @@ async fn index_document(
             }
         },
         None => {
-            info!("none");
             match data.index.insert(
                 info.index.clone(),
                 Arc::new(Mutex::new(crate::index_engine::IndexEngine::new(
+                    std::env::current_dir().unwrap(),
                     info.index.clone(),
                     req_body.clone(),
                 ))),
