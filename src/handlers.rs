@@ -57,7 +57,7 @@ async fn catch_post(info: web::Path<PathInfo>, body: web::Bytes) -> Result<HttpR
 #[get("/i/{index}/{term}")]
 async fn search_index(
     info: web::Path<IndexInfo>,
-    data: web::Data<Mutex<crate::index_engine::IndexManager>>,
+    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
 ) -> Result<HttpResponse, Error> {
     let data = data.lock().unwrap();
     let index = data.index.get(&info.index);
@@ -65,7 +65,7 @@ async fn search_index(
     match index {
         Some(vect) => match vect.lock() {
             Ok(mut v) => match v.search(info.term.clone()) {
-                Ok(mut payload) => {
+                Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(payload));
@@ -97,7 +97,7 @@ async fn search_index(
 async fn index_document(
     req_body: String,
     info: web::Path<DocumentInfo>,
-    data: web::Data<Mutex<crate::index_engine::IndexManager>>,
+    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
 ) -> Result<HttpResponse, Error> {
     let mut data = data.lock().unwrap();
     let index = data.index.get(&info.index);
@@ -121,7 +121,7 @@ async fn index_document(
                     req_body.clone(),
                 ))),
             ) {
-                Some(v) => {
+                Some(_v) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(format!("msg: Document updated")))
@@ -129,7 +129,7 @@ async fn index_document(
                 None => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
-                        .body(format!("msg: Document added")))
+                        .body(format!("{{msg: Document added}}")))
                 }
             }
         }
@@ -137,4 +137,43 @@ async fn index_document(
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(format!("document {} indexed at {}", req_body, info.index)))
+}
+
+#[get("/stats/{index}")]
+async fn index_stats(
+    info: web::Path<DocumentInfo>,
+    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+) -> Result<HttpResponse, Error> {
+    let data = data.lock().unwrap();
+    let index = data.index.get(&info.index);
+
+    match index {
+        Some(vect) => match vect.lock() {
+            Ok(mut v) => match v.to_json() {
+                Ok(payload) => {
+                    return Ok(HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(payload));
+                }
+                Err(e) => {
+                    return Ok(HttpResponse::NoContent()
+                        .content_type("application/json")
+                        .body(e.to_string()))
+                }
+            },
+            Err(e) => {
+                return Ok(HttpResponse::BadRequest()
+                    .content_type("application/json")
+                    .body(format!(
+                        "msg: err fetching message from topic {:?} -  {:?}",
+                        info.index, e
+                    )))
+            }
+        },
+        None => {
+            return Ok(HttpResponse::NotFound()
+                .content_type("application/json")
+                .body(format!("msg: index [{:?}] not found", info.index)))
+        }
+    }
 }

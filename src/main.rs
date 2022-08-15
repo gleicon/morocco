@@ -4,6 +4,7 @@ use std::sync::Mutex;
 
 mod handlers;
 mod index_engine;
+mod index_manager;
 
 #[macro_use]
 extern crate log;
@@ -16,7 +17,7 @@ async fn main() -> std::io::Result<()> {
     );
     env_logger::init();
     info!("Morocco search");
-    let data = web::Data::new(Mutex::new(index_engine::IndexManager {
+    let data = web::Data::new(Mutex::new(index_manager::IndexManager {
         index: HashMap::new(),
     }));
 
@@ -26,6 +27,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(data.clone())
             .service(handlers::search_index)
             .service(handlers::index_document)
+            .service(handlers::index_stats)
             .service(handlers::catch_get)
             .service(handlers::catch_post)
     })

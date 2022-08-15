@@ -1,16 +1,12 @@
 // index interface
 use chrono::Local;
+use json;
+use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 use uuid::Uuid;
-
-pub struct IndexManager {
-    pub index: HashMap<String, Arc<Mutex<IndexEngine>>>,
-}
 
 pub struct IndexEngine {
     path: String,
@@ -27,18 +23,29 @@ struct Resultset {
 }
 
 impl IndexEngine {
-    pub fn new_blank_index(name: String) -> Self {
-        let path = format!("{}.db", name);
-        let ie = IndexEngine {
-            path: path.clone(),
-            name: name,
-            version: Uuid::new_v4(),
-            db_connection: sqlite::open(path.clone()).unwrap(), // temp config
-            created_at: Local::now().timestamp_millis(),
-            attribute_list: Vec::new(),
+    pub fn to_json(&mut self) -> Result<String, String> {
+        let out = object! {
+            path: self.path.clone(),
+            name: self.name.clone(),
+            version: self.version.clone().to_string(),
+            created_at: self.created_at.clone(),
+            schema: self.attribute_list.clone(),
         };
-        ie
-    } // new index engine
+        Ok(out.dump())
+    }
+
+    // pub fn new_blank_index(name: String) -> Self {
+    //     let path = format!("{}.db", name);
+    //     let ie = IndexEngine {
+    //         path: path.clone(),
+    //         name: name,
+    //         version: Uuid::new_v4(),
+    //         db_connection: sqlite::open(path.clone()).unwrap(), // temp config
+    //         created_at: Local::now().timestamp_millis(),
+    //         attribute_list: Vec::new(),
+    //     };
+    //     ie
+    // } // new index engine
 
     pub fn new(name: String, doc: String) -> Self {
         let path = format!("{}.db", name);
@@ -83,15 +90,6 @@ impl IndexEngine {
 
         serde_json::to_string(&rs)
     }
-
-    pub fn create_standard_schema_index(&mut self) {
-        let create_statement = format!(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS {} USING fts5 (title, body)",
-            self.name
-        );
-
-        self.db_connection.execute(create_statement).unwrap();
-    } //creates a standard (title,body) index
 
     pub fn index_string_document(&mut self, body: String) {
         let doc = json::parse(&body).unwrap();
