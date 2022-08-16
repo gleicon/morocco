@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 pub struct IndexManager {
@@ -39,13 +39,13 @@ impl IndexManager {
     }
     fn load_existing_index(&mut self, index_name: String) -> Result<String, String> {
         // if key exists, just refresh. if not, create it
+        let pp = Path::new(&index_name).to_path_buf();
+        let index = pp.file_stem().unwrap();
+        let clean_name = index.to_os_string().into_string().unwrap();
         match self.index.insert(
-            index_name.clone(),
+            clean_name.clone(),
             Arc::new(Mutex::new(
-                crate::index_engine::IndexEngine::load_or_create_index(
-                    std::env::current_dir().unwrap(),
-                    index_name.clone(),
-                ),
+                crate::index_engine::IndexEngine::load_or_create_index(pp, clean_name.clone()),
             )),
         ) {
             Some(_v) => return Ok(format!("msg: Index updated {}", index_name.clone())),
@@ -53,12 +53,23 @@ impl IndexManager {
         }
     }
     fn load_persistence(&mut self) {
+        if !self.path.ends_with("data") {
+            self.path.push("data");
+        }
+        info!("Data path: {:?}", self.path);
+
+        if !Path::new(&self.path).exists() {
+            info!("Creating data dir: {:?}", self.path);
+            fs::create_dir_all(&self.path).unwrap();
+        }
+
         let dir = &self.path;
+        info!("dir: {:?}", dir);
         if dir.is_dir() {
             for entry in fs::read_dir(dir).unwrap() {
-                let path = entry.unwrap().path();
-                if path.is_dir() {
-                    let index_name = path.to_str().unwrap().to_string();
+                let db_path = entry.unwrap().path();
+                if !db_path.is_dir() {
+                    let index_name = db_path.to_str().unwrap().to_string();
                     self.load_existing_index(index_name).unwrap();
                 };
             }

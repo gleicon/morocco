@@ -6,6 +6,8 @@ use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -35,8 +37,13 @@ impl IndexEngine {
         Ok(out.dump())
     }
 
-    pub fn load_or_create_index(mut path: PathBuf, name: String) -> Self {
-        path.push(format!("{}.db", name));
+    pub fn load_or_create_index(path: PathBuf, name: String) -> Self {
+        let mut path = path.clone();
+
+        if !path.is_file() {
+            path.push(name.clone());
+        }
+
         let ie = IndexEngine {
             path: path.clone(),
             name: name,
