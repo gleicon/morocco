@@ -6,8 +6,6 @@ use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use sqlite;
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
