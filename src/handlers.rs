@@ -2,7 +2,7 @@ use actix_web::{get, post, Error, Result};
 use actix_web::{web, HttpResponse};
 use json::JsonValue;
 use serde::Deserialize;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 #[derive(Deserialize)]
 pub struct IndexInfo {
@@ -63,8 +63,8 @@ async fn search_index(
     let index = data.index.get(&info.index);
 
     match index {
-        Some(vect) => match vect.lock() {
-            Ok(mut v) => match v.search(info.term.clone()) {
+        Some(indexengine) => match indexengine.lock() {
+            Ok(mut ie) => match ie.search(info.term.clone()) {
                 Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
@@ -80,7 +80,7 @@ async fn search_index(
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
                     .body(format!(
-                        "msg: err fetching message from topic {:?} -  {:?}",
+                        "msg: err fetching data from index {:?} -  {:?}",
                         info.index, e
                     )))
             }
@@ -97,15 +97,20 @@ async fn search_index(
 async fn index_document(
     req_body: String,
     info: web::Path<DocumentInfo>,
-    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
 ) -> Result<HttpResponse, Error> {
-    let mut data = data.lock().unwrap();
-    let index = data.index.get(&info.index);
+    let mut index_manager = index_manager.lock().unwrap();
+    let index = index_manager.index.get(&info.index);
     info!("{}", info.index.clone());
 
     match index {
-        Some(vect) => match vect.lock() {
-            Ok(mut v) => v.index_string_document(req_body.clone()),
+        Some(index_engine) => match index_engine.lock() {
+            Ok(mut ie) => {
+                ie.index_string_document(req_body.clone());
+                return Ok(HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(format!("msg: Document updated")));
+            }
             Err(e) => {
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
@@ -113,30 +118,15 @@ async fn index_document(
             }
         },
         None => {
-            info!("none");
-            match data.index.insert(
-                info.index.clone(),
-                Arc::new(Mutex::new(crate::index_engine::IndexEngine::new(
-                    info.index.clone(),
-                    req_body.clone(),
-                ))),
-            ) {
-                Some(_v) => {
-                    return Ok(HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(format!("msg: Document updated")))
-                }
-                None => {
-                    return Ok(HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(format!("{{msg: Document added}}")))
-                }
-            }
+            index_manager
+                .create_new_index(info.index.clone(), req_body.clone())
+                .unwrap(); // TODO: improve error handling
+
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("document {} indexed at {}", req_body, info.index)))
         }
     }
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(format!("document {} indexed at {}", req_body, info.index)))
 }
 
 #[get("/stats/{index}")]
