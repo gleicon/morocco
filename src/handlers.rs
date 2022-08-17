@@ -5,6 +5,11 @@ use serde::Deserialize;
 use std::sync::Mutex;
 
 #[derive(Deserialize)]
+pub struct Query {
+    q: String,
+}
+
+#[derive(Deserialize)]
 pub struct IndexInfo {
     index: String,
     term: String,
@@ -54,17 +59,20 @@ async fn catch_post(info: web::Path<PathInfo>, body: web::Bytes) -> Result<HttpR
 
 // rest search routes
 // resembles restmq on simplicity and routing
-#[get("/i/{index}/{term}")]
+// querystring is provided by the ?q= query parameter
+#[get("/i/{index}")]
 async fn search_index(
-    info: web::Path<IndexInfo>,
+    info: web::Path<DocumentInfo>,
     data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
     let data = data.lock().unwrap();
     let index = data.index.get(&info.index);
+    let query = query.q.clone();
 
     match index {
         Some(indexengine) => match indexengine.lock() {
-            Ok(mut ie) => match ie.search(info.term.clone()) {
+            Ok(mut ie) => match ie.search(query.clone()) {
                 Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
