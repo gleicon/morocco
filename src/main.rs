@@ -28,7 +28,7 @@ pub struct MoroccoOptions {
 async fn main() -> std::io::Result<()> {
     std::env::set_var(
         "RUST_LOG",
-        "actix_web=info,actix_server=info,morocco=info,morocco::handlers=info,morocco::index_engine=info,morocco::index_manager=info",
+        "actix_web=info,actix_server=info,morocco=info,morocco::handlers=debug,morocco::index_engine=info,morocco::index_manager=info",
     );
     env_logger::init();
     info!("Morocco search");

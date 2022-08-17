@@ -1,6 +1,7 @@
 use actix_web::{get, post, Error, Result};
 use actix_web::{web, HttpResponse};
 use json::JsonValue;
+use regex::Regex;
 use serde::Deserialize;
 use std::sync::Mutex;
 
@@ -69,6 +70,13 @@ async fn search_index(
     let data = data.lock().unwrap();
     let index = data.index.get(&info.index);
     let query = query.q.clone();
+    debug!("query string: {}", query);
+
+    let re = Regex::new(r"\W+").unwrap();
+    let caps: Vec<&str> = re.split(&query).collect();
+    let query = caps.join(" ");
+
+    debug!("filtered query string:{:?}", query);
 
     match index {
         Some(indexengine) => match indexengine.lock() {

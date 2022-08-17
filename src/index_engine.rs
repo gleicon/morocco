@@ -143,3 +143,6 @@ impl IndexEngine {
         };
     }
 }
+
+// tests
+// curl -vvv localhost:3000/i/livros?q=amigos+';'+select+from+livros
