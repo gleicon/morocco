@@ -26,7 +26,7 @@ struct Resultset {
 impl IndexEngine {
     pub fn to_json(&mut self) -> Result<String, String> {
         let out = object! {
-            path: self.path.clone().into_os_string().into_string().unwrap(),
+            path: self.path.clone().to_str(),
             name: self.name.clone(),
             version: self.version.clone().to_string(),
             created_at: self.created_at.clone(),
@@ -39,7 +39,7 @@ impl IndexEngine {
         let mut path = path.clone();
 
         if !path.is_file() {
-            path.push(name.clone());
+            path.push(format!("{}.db", name.clone()));
         }
 
         let ie = IndexEngine {
