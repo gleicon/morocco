@@ -1,8 +1,14 @@
 use actix_web::{get, post, Error, Result};
 use actix_web::{web, HttpResponse};
 use json::JsonValue;
+use regex::Regex;
 use serde::Deserialize;
 use std::sync::Mutex;
+
+#[derive(Deserialize)]
+pub struct Query {
+    q: String,
+}
 
 #[derive(Deserialize)]
 pub struct IndexInfo {
@@ -54,17 +60,27 @@ async fn catch_post(info: web::Path<PathInfo>, body: web::Bytes) -> Result<HttpR
 
 // rest search routes
 // resembles restmq on simplicity and routing
-#[get("/i/{index}/{term}")]
+// querystring is provided by the ?q= query parameter
+#[get("/i/{index}")]
 async fn search_index(
-    info: web::Path<IndexInfo>,
+    info: web::Path<DocumentInfo>,
     data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
     let data = data.lock().unwrap();
     let index = data.index.get(&info.index);
+    let query = query.q.clone();
+    debug!("query string: {}", query);
+
+    let re = Regex::new(r"\W+").unwrap();
+    let caps: Vec<&str> = re.split(&query).collect();
+    let query = caps.join(" ");
+
+    debug!("filtered query string:{:?}", query);
 
     match index {
         Some(indexengine) => match indexengine.lock() {
-            Ok(mut ie) => match ie.search(info.term.clone()) {
+            Ok(mut ie) => match ie.search(query.clone()) {
                 Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
