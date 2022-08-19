@@ -83,29 +83,45 @@ async fn search_index(
         Some(indexengine) => match indexengine.lock() {
             Ok(mut ie) => match ie.search(query.clone()) {
                 Ok(payload) => {
+                    stats
+                        .lock()
+                        .unwrap()
+                        .increment_index_usage_counter(info.index.clone());
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(payload));
                 }
                 Err(e) => {
+                    stats
+                        .lock()
+                        .unwrap()
+                        .increment_http_4xx_errors_counter(info.index.clone());
                     return Ok(HttpResponse::NoContent()
                         .content_type("application/json")
-                        .body(e.to_string()))
+                        .body(e.to_string()));
                 }
             },
             Err(e) => {
+                stats
+                    .lock()
+                    .unwrap()
+                    .increment_http_5xx_errors_counter(info.index.clone());
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
                     .body(format!(
                         "msg: err fetching data from index {:?} -  {:?}",
                         info.index, e
-                    )))
+                    )));
             }
         },
         None => {
+            stats
+                .lock()
+                .unwrap()
+                .increment_http_4xx_errors_counter(info.index.clone());
             return Ok(HttpResponse::NotFound()
                 .content_type("application/json")
-                .body(format!("msg: index [{:?}] not found", info.index)))
+                .body(format!("msg: index [{:?}] not found", info.index)));
         }
     }
 }
