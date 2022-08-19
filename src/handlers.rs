@@ -65,6 +65,7 @@ async fn catch_post(info: web::Path<PathInfo>, body: web::Bytes) -> Result<HttpR
 async fn search_index(
     info: web::Path<DocumentInfo>,
     data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    stats: web::Data<Mutex<crate::stats::SearchStats>>,
     query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
     let data = data.lock().unwrap();
@@ -114,6 +115,7 @@ async fn index_document(
     req_body: String,
     info: web::Path<DocumentInfo>,
     index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    stats: web::Data<Mutex<crate::stats::SearchStats>>,
 ) -> Result<HttpResponse, Error> {
     let mut index_manager = index_manager.lock().unwrap();
     let index = index_manager.index.get(&info.index);

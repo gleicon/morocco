@@ -1,12 +1,17 @@
 use actix_web::{middleware, web, App, HttpServer};
 use clap::{AppSettings, Parser};
 
+use hostname;
 use std::path::PathBuf;
+use std::process;
 use std::sync::Mutex;
+
+use crate::stats::SearchStats;
 
 mod handlers;
 mod index_engine;
 mod index_manager;
+mod stats;
 
 #[macro_use]
 extern crate log;
@@ -45,16 +50,25 @@ async fn main() -> std::io::Result<()> {
         Some(hp) => hp,
         None => 3000,
     };
-    info!("Http port: {}", http_port);
+    info!("http port: {}", http_port);
+
+    let id = format!(
+        "{}-{:?}",
+        hostname::get().unwrap().to_string_lossy(),
+        process::id()
+    );
+    info!("instance id: {}", id.clone());
 
     let data = web::Data::new(Mutex::new(index_manager::IndexManager::new(
         std::env::current_dir().unwrap(),
     )));
+    let stats = web::Data::new(Mutex::new(stats::SearchStats::new(id.clone())));
 
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
             .app_data(data.clone())
+            .app_data(stats.clone())
             .service(handlers::search_index)
             .service(handlers::index_document)
             .service(handlers::index_stats)
