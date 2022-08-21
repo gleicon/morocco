@@ -18,7 +18,7 @@ client.transporter.hosts = [stHost, stHost2];
 
 //console.log(client.transporter.hosts);
 
-const index = client.initIndex('your_index_name');
+const index = client.initIndex('livros');
 
 const objects = [
   {
@@ -35,7 +35,7 @@ index.saveObjects(objects).then(({ objectIDs }) => {
   console.log(JSON.stringify(err, null, 2));
 });
 
-index.search('Fo').then(({ hits }) => {
+index.search('amigos').then(({ hits }) => {
   console.log(hits);
 }).catch(err => {
   //  console.log(err);
