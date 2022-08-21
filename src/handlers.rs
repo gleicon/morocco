@@ -7,6 +7,9 @@ use regex::Regex;
 use serde::Deserialize;
 use std::sync::Mutex;
 
+use chrono::{DateTime, Utc};
+use std::time::SystemTime;
+
 #[derive(Deserialize)]
 pub struct Query {
     q: String,
@@ -44,22 +47,70 @@ async fn catch_get(info: web::Path<PathInfo>) -> Result<HttpResponse, Error> {
 #[post("/{route:.*}")]
 async fn catch_post(
     info: web::Path<PathInfo>,
-    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
     body: web::Bytes,
 ) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
-    let data = data.lock().unwrap();
+    let data = index_manager.lock().unwrap();
 
     let injson: JsonValue = match result {
         Ok(v) => v,
         Err(e) => json::object! {"err" => e.to_string() },
     };
-    info!("> {}", info.route); // 1/indexes/livros/query
+    info!("> {}", info.route); // 1/indexes/livros/query | 1/indexes/livros/batch
     info!(">> {}", injson.dump());
     info!(">>> {}", injson["requests"]);
     info!(">>>> {}", injson["query"]);
     for x in injson.entries() {
         info!(">>>>> {:?}", x);
+    }
+    if !injson["requests"].is_null() {
+        let request = injson["requests"].clone();
+        let route: Vec<&str> = info.route.split("/").into_iter().collect();
+        let index_name = route[2].clone();
+        info!("index: {}", index_name);
+
+        let mut index_manager = index_manager.lock().unwrap();
+        let index = index_manager.index.get(index_name);
+        info!("{}", index_name.clone());
+
+        match index {
+            Some(index_engine) => match index_engine.lock() {
+                Ok(mut ie) => {
+                    ie.index_string_document(request.clone().to_string());
+                    let now = SystemTime::now();
+                    let now: DateTime<Utc> = now.into();
+                    let now = now.to_rfc3339();
+
+                    let rs = object! {
+                        updatedAt: now,
+                        taskID:1,
+                        objectID: "indexed by morocco",
+                    };
+                    return Ok(HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(rs.to_string()));
+                }
+                Err(e) => {
+                    return Ok(HttpResponse::BadRequest()
+                        .content_type("application/json")
+                        .body(format!("msg: err {:?}", e)))
+                }
+            },
+            None => {
+                index_manager
+                    .create_new_index(index_name.clone().to_string(), request.clone().to_string())
+                    .unwrap(); // TODO: improve error handling
+
+                return Ok(HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(format!(
+                        "document {} indexed at {}",
+                        request.clone(),
+                        index_name.clone()
+                    )));
+            }
+        }
     }
     if !injson["query"].is_null() {
         let query = injson["query"].to_string();
@@ -69,7 +120,7 @@ async fn catch_post(
 
         let route: Vec<&str> = info.route.split("/").into_iter().collect();
         let index_name = route[2].clone();
-        info!("index: {}", route[2]);
+        info!("index: {}", index_name);
         let index = data.index.get(index_name);
 
         match index {
@@ -119,11 +170,11 @@ async fn catch_post(
 #[get("/i/{index}")]
 async fn search_index(
     info: web::Path<DocumentInfo>,
-    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
     stats: web::Data<Mutex<crate::stats::SearchStats>>,
     query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
-    let data = data.lock().unwrap();
+    let data = index_manager.lock().unwrap();
     let index = data.index.get(&info.index);
     let query = query.q.clone();
     debug!("query string: {}", query);
