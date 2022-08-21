@@ -1,6 +1,8 @@
 use actix_web::{get, post, Error, Result};
 use actix_web::{web, HttpResponse};
+use json::object;
 use json::JsonValue;
+
 use regex::Regex;
 use serde::Deserialize;
 use std::sync::Mutex;
@@ -40,17 +42,70 @@ async fn catch_get(info: web::Path<PathInfo>) -> Result<HttpResponse, Error> {
 }
 
 #[post("/{route:.*}")]
-async fn catch_post(info: web::Path<PathInfo>, body: web::Bytes) -> Result<HttpResponse, Error> {
+async fn catch_post(
+    info: web::Path<PathInfo>,
+    data: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    body: web::Bytes,
+) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
+    let data = data.lock().unwrap();
+
     let injson: JsonValue = match result {
         Ok(v) => v,
         Err(e) => json::object! {"err" => e.to_string() },
     };
-    info!("{}", info.route);
-    info!("{}", injson.dump());
-    info!("{}", injson["requests"]);
+    info!("> {}", info.route); // 1/indexes/livros/query
+    info!(">> {}", injson.dump());
+    info!(">>> {}", injson["requests"]);
+    info!(">>>> {}", injson["query"]);
     for x in injson.entries() {
-        info!("{:?}", x);
+        info!(">>>>> {:?}", x);
+    }
+    if !injson["query"].is_null() {
+        let query = injson["query"].to_string();
+        let re = Regex::new(r"\W+").unwrap();
+        let caps: Vec<&str> = re.split(&query).collect();
+        let query = caps.join(" ");
+
+        let route: Vec<&str> = info.route.split("/").into_iter().collect();
+        let index_name = route[2].clone();
+        info!("index: {}", route[2]);
+        let index = data.index.get(index_name);
+
+        match index {
+            Some(indexengine) => match indexengine.lock() {
+                Ok(mut ie) => match ie.search(query.clone()) {
+                    Ok(payload) => {
+                        let rs = object! {
+                            hits: payload.clone(),
+                        };
+                        info!("{}", rs.clone());
+                        return Ok(HttpResponse::Ok()
+                            .content_type("application/json")
+                            .body(rs.to_string()));
+                    }
+                    Err(e) => {
+                        return Ok(HttpResponse::NoContent()
+                            .content_type("application/json")
+                            .body(e.to_string()))
+                    }
+                },
+                Err(e) => {
+                    return Ok(HttpResponse::BadRequest()
+                        .content_type("application/json")
+                        .body(format!(
+                            "msg: err fetching data from index {:?} -  {:?}",
+                            index_name.clone(),
+                            e
+                        )))
+                }
+            },
+            None => {
+                return Ok(HttpResponse::NotFound()
+                    .content_type("application/json")
+                    .body(format!("msg: index [{:?}] not found", index_name.clone())))
+            }
+        }
     }
 
     return Ok(HttpResponse::Ok()
