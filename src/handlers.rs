@@ -57,18 +57,19 @@ async fn catch_post(
         Ok(v) => v,
         Err(e) => json::object! {"err" => e.to_string() },
     };
-    info!("> {}", info.route); // 1/indexes/livros/query | 1/indexes/livros/batch
-    info!(">> {}", injson.dump());
-    info!(">>> {}", injson["requests"]);
-    info!(">>>> {}", injson["query"]);
-    for x in injson.entries() {
-        info!(">>>>> {:?}", x);
-    }
+    // info!("> {}", info.route); // 1/indexes/livros/query | 1/indexes/livros/batch
+    // info!(">> {}", injson.dump());
+    // info!(">>> {}", injson["requests"]);
+    // info!(">>>> {}", injson["query"]);
+    // for x in injson.entries() {
+    //     info!(">>>>> {:?}", x);
+    // }
+
     if !injson["requests"].is_null() {
         let request = injson["requests"].clone();
         let route: Vec<&str> = info.route.split("/").into_iter().collect();
         let index_name = route[2].clone();
-        info!("index: {}", index_name);
+        info!("searching index: {}", index_name);
 
         let mut index_manager = index_manager.lock().unwrap();
         let index = index_manager.index.get(index_name);
@@ -78,6 +79,7 @@ async fn catch_post(
             Some(index_engine) => match index_engine.lock() {
                 Ok(mut ie) => {
                     ie.index_string_document(request.clone().to_string());
+
                     let now = SystemTime::now();
                     let now: DateTime<Utc> = now.into();
                     let now = now.to_rfc3339();
@@ -87,6 +89,7 @@ async fn catch_post(
                         taskID:1,
                         objectID: "indexed by morocco",
                     };
+
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(rs.to_string()));
@@ -130,7 +133,7 @@ async fn catch_post(
                         let rs = object! {
                             hits: payload.clone(),
                         };
-                        info!("{}", rs.clone());
+                        info!("resultset: {}", rs.clone());
                         return Ok(HttpResponse::Ok()
                             .content_type("application/json")
                             .body(rs.to_string()));
