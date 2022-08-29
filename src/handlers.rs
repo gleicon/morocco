@@ -236,6 +236,11 @@ async fn index_document(
     let index = index_manager.index.get(&info.index);
     info!("{}", info.index.clone());
 
+    stats
+        .lock()
+        .unwrap()
+        .increment_index_usage_counter(info.index.clone());
+
     match index {
         Some(index_engine) => match index_engine.lock() {
             Ok(mut ie) => {
