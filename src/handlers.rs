@@ -7,18 +7,9 @@ use regex::Regex;
 use serde::Deserialize;
 use std::sync::Mutex;
 
-use chrono::{DateTime, Utc};
-use std::time::SystemTime;
-
 #[derive(Deserialize)]
 pub struct Query {
     q: String,
-}
-
-#[derive(Deserialize)]
-pub struct IndexInfo {
-    index: String,
-    term: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -65,75 +56,75 @@ async fn catch_post(
     //     info!(">>>>> {:?}", x);
     // }
 
-    if !injson["requests"].is_null() {
-        let request = injson["requests"].clone();
-        let route: Vec<&str> = info.route.split("/").into_iter().collect();
-        let index_name = route[2].clone();
-        info!("searching index: {}", index_name);
+    // if !injson["requests"].is_null() {
+    //     let request = injson["requests"].clone();
+    //     let route: Vec<&str> = info.route.split("/").into_iter().collect();
+    //     let index_name = route[2].clone();
+    //     info!("searching index: {}", index_name);
 
-        let mut index_manager = index_manager.lock().unwrap();
-        let index = index_manager.index.get(index_name);
-        info!("{}", index_name.clone());
+    //     let mut index_manager = index_manager.lock().unwrap();
+    //     let index = index_manager.index.get(index_name);
+    //     info!("{}", index_name.clone());
 
-        match index {
-            Some(index_engine) => match index_engine.lock() {
-                Ok(mut ie) => {
-                    ie.index_string_document(request.clone().to_string());
+    //     match index {
+    //         Some(index_engine) => match index_engine.lock() {
+    //             Ok(mut ie) => {
+    //                 ie.index_string_document(request.clone().to_string());
 
-                    let now = SystemTime::now();
-                    let now: DateTime<Utc> = now.into();
-                    let now = now.to_rfc3339();
+    //                 let now = SystemTime::now();
+    //                 let now: DateTime<Utc> = now.into();
+    //                 let now = now.to_rfc3339();
 
-                    let rs = object! {
-                        updatedAt: now,
-                        taskID:1,
-                        objectID: "indexed by morocco",
-                    };
+    //                 let rs = object! {
+    //                     updatedAt: now,
+    //                     taskID:1,
+    //                     objectID: "indexed by morocco",
+    //                 };
 
-                    return Ok(HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(rs.to_string()));
-                }
-                Err(e) => {
-                    return Ok(HttpResponse::BadRequest()
-                        .content_type("application/json")
-                        .body(format!("msg: err {:?}", e)))
-                }
-            },
-            None => {
-                index_manager
-                    .create_new_index(index_name.clone().to_string(), request.clone().to_string())
-                    .unwrap(); // TODO: improve error handling
+    //                 return Ok(HttpResponse::Ok()
+    //                     .content_type("application/json")
+    //                     .body(rs.to_string()));
+    //             }
+    //             Err(e) => {
+    //                 return Ok(HttpResponse::BadRequest()
+    //                     .content_type("application/json")
+    //                     .body(format!("msg: err {:?}", e)))
+    //             }
+    //         },
+    //         None => {
+    //             index_manager
+    //                 .create_new_index(index_name.clone().to_string(), request.clone().to_string())
+    //                 .unwrap(); // TODO: improve error handling
 
-                return Ok(HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(format!(
-                        "document {} indexed at {}",
-                        request.clone(),
-                        index_name.clone()
-                    )));
-            }
-        }
-    }
+    //             return Ok(HttpResponse::Ok()
+    //                 .content_type("application/json")
+    //                 .body(format!(
+    //                     "document {} indexed at {}",
+    //                     request.clone(),
+    //                     index_name.clone()
+    //                 )));
+    //         }
+    //     }
+    // };
+
     if !injson["query"].is_null() {
         let query = injson["query"].to_string();
         let re = Regex::new(r"\W+").unwrap();
         let caps: Vec<&str> = re.split(&query).collect();
         let query = caps.join(" ");
 
-        let route: Vec<&str> = info.route.split("/").into_iter().collect();
-        let index_name = route[2].clone();
+        let route: Vec<&str> = info.route.split('/').into_iter().collect();
+        let index_name = route[2];
         info!("index: {}", index_name);
         let index = data.index.get(index_name);
 
         match index {
             Some(indexengine) => match indexengine.lock() {
-                Ok(mut ie) => match ie.search(query.clone()) {
+                Ok(mut ie) => match ie.search(query) {
                     Ok(payload) => {
                         let rs = object! {
-                            hits: payload.clone(),
+                            hits: payload,
                         };
-                        info!("resultset: {}", rs.clone());
                         return Ok(HttpResponse::Ok()
                             .content_type("application/json")
                             .body(rs.to_string()));
@@ -149,15 +140,14 @@ async fn catch_post(
                         .content_type("application/json")
                         .body(format!(
                             "msg: err fetching data from index {:?} -  {:?}",
-                            index_name.clone(),
-                            e
+                            index_name, e
                         )))
                 }
             },
             None => {
                 return Ok(HttpResponse::NotFound()
                     .content_type("application/json")
-                    .body(format!("msg: index [{:?}] not found", index_name.clone())))
+                    .body(format!("msg: index [{:?}] not found", index_name)))
             }
         }
     }
@@ -190,7 +180,7 @@ async fn search_index(
 
     match index {
         Some(indexengine) => match indexengine.lock() {
-            Ok(mut ie) => match ie.search(query.clone()) {
+            Ok(mut ie) => match ie.search(query) {
                 Ok(payload) => {
                     stats
                         .lock()
@@ -249,10 +239,10 @@ async fn index_document(
     match index {
         Some(index_engine) => match index_engine.lock() {
             Ok(mut ie) => {
-                ie.index_string_document(req_body.clone());
+                ie.index_string_document(req_body);
                 return Ok(HttpResponse::Ok()
                     .content_type("application/json")
-                    .body(format!("msg: Document updated")));
+                    .body("msg: Document updated"));
             }
             Err(e) => {
                 return Ok(HttpResponse::BadRequest()
@@ -282,7 +272,7 @@ async fn index_stats(
 
     match index {
         Some(vect) => match vect.lock() {
-            Ok(mut v) => match v.to_json() {
+            Ok(mut v) => match v.dump_json() {
                 Ok(payload) => {
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
@@ -291,7 +281,7 @@ async fn index_stats(
                 Err(e) => {
                     return Ok(HttpResponse::NoContent()
                         .content_type("application/json")
-                        .body(e.to_string()))
+                        .body(e))
                 }
             },
             Err(e) => {

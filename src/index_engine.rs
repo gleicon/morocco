@@ -1,10 +1,8 @@
 // index interface
 use chrono::Local;
-use json;
 use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
-use sqlite;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -24,33 +22,32 @@ struct Resultset {
 }
 
 impl IndexEngine {
-    pub fn to_json(&mut self) -> Result<String, String> {
+    pub fn dump_json(&mut self) -> Result<String, String> {
         let out = object! {
             path: self.path.clone().to_str(),
             name: self.name.clone(),
             version: self.version.clone().to_string(),
-            created_at: self.created_at.clone(),
+            created_at: self.created_at,
             schema: self.attribute_list.clone(),
         };
         Ok(out.dump())
     }
 
     pub fn load_or_create_index(path: PathBuf, name: String) -> Self {
-        let mut path = path.clone();
+        let mut path = path;
 
         if !path.is_file() {
-            path.push(format!("{}.db", name.clone()));
+            path.push(format!("{}.db", name));
         }
 
-        let ie = IndexEngine {
+        IndexEngine {
             path: path.clone(),
-            name: name,
+            name,
             version: Uuid::new_v4(),
             db_connection: sqlite::open(path.clone()).unwrap(),
             created_at: Local::now().timestamp_millis(),
             attribute_list: Vec::new(),
-        };
-        ie
+        }
     } // new index engine
 
     pub fn new(path: PathBuf, name: String, doc: String) -> Self {
@@ -100,7 +97,7 @@ impl IndexEngine {
         for tag in doc.entries() {
             println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
-            value_list.push(format!("'{}'", tag.1.to_string()));
+            value_list.push(format!("'{}'", tag.1));
         }
 
         let insert_statement = format!(
@@ -118,7 +115,7 @@ impl IndexEngine {
         let local_doc = doc.clone();
 
         for tag in local_doc.entries() {
-            let tag = tag.clone();
+            let tag = tag;
             println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
         }

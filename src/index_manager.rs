@@ -11,18 +11,18 @@ pub struct IndexManager {
 impl IndexManager {
     pub fn new(path: PathBuf) -> IndexManager {
         let mut im = IndexManager {
-            path: path.clone(),
+            path,
             index: HashMap::new(),
         };
         im.load_persistence();
         im
     }
     pub fn create_new_index(&mut self, index_name: String, doc: String) -> Result<String, String> {
-        match self.index.get(&index_name.clone()) {
+        match self.index.get(&index_name) {
             // check if the index is not there already
             Some(i) => {
-                i.lock().unwrap().index_string_document(doc.clone());
-                return Ok(format!("msg: Index updated {}", index_name.clone()));
+                i.lock().unwrap().index_string_document(doc);
+                Ok(format!("msg: Index updated {}", index_name.clone()))
             }
             None => {
                 self.index.insert(
@@ -30,10 +30,10 @@ impl IndexManager {
                     Arc::new(Mutex::new(crate::index_engine::IndexEngine::new(
                         self.path.clone(),
                         index_name.clone(),
-                        doc.clone(),
+                        doc,
                     ))),
                 );
-                return Ok(format!("msg: index created {}", index_name.clone()));
+                Ok(format!("msg: index created {}", index_name.clone()))
             }
         }
     }
@@ -45,11 +45,11 @@ impl IndexManager {
         match self.index.insert(
             clean_name.clone(),
             Arc::new(Mutex::new(
-                crate::index_engine::IndexEngine::load_or_create_index(pp, clean_name.clone()),
+                crate::index_engine::IndexEngine::load_or_create_index(pp, clean_name),
             )),
         ) {
-            Some(_v) => return Ok(format!("msg: Index updated {}", index_name.clone())),
-            None => return Ok(format!("msg: Index loaded {}", index_name.clone())),
+            Some(_v) => Ok(format!("msg: Index updated {}", index_name)),
+            None => Ok(format!("msg: Index loaded {}", index_name)),
         }
     }
     fn load_persistence(&mut self) {

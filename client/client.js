@@ -35,8 +35,8 @@ index.saveObjects(objects).then(({ objectIDs }) => {
   console.log(JSON.stringify(err, null, 2));
 });
 
-// index.search('amigos').then(({ hits }) => {
-//   console.log(hits);
-// }).catch(err => {
-//   console.log(JSON.stringify(err, null, 2));
-// });
+index.search('amigos').then(({ hits }) => {
+  console.log(hits);
+}).catch(err => {
+  console.log(JSON.stringify(err, null, 2));
+});
