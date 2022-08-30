@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
     );
     env_logger::init();
     info!("Morocco search");
+    // console_subscriber::init();
 
     let cli = MoroccoOptions::parse();
 
@@ -57,7 +58,8 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::index_document)
             .service(handlers::index_stats)
             .service(handlers::catch_get)
-            .service(handlers::catch_post)
+            .service(handlers::query_index)
+            .service(handlers::batch_index)
     })
     .bind(("127.0.0.1", http_port))?
     .run()

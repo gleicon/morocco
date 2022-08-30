@@ -1,7 +1,10 @@
 use actix_web::{get, post, Error, Result};
 use actix_web::{web, HttpResponse};
+use chrono::DateTime;
+use chrono::Utc;
 use json::object;
 use json::JsonValue;
+use std::time::SystemTime;
 
 use regex::Regex;
 use serde::Deserialize;
@@ -35,113 +38,46 @@ async fn catch_get(info: web::Path<PathInfo>) -> Result<HttpResponse, Error> {
         .body(info.clone().route));
 }
 
-#[post("/{route:.*}")]
-async fn catch_post(
+#[post("/1/indexes/{route}/query")]
+async fn query_index(
     info: web::Path<PathInfo>,
     index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
     body: web::Bytes,
 ) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
     let data = index_manager.lock().unwrap();
+    info!("index: {}", info.route);
+    info!("body: {:?}", result);
 
     let injson: JsonValue = match result {
         Ok(v) => v,
         Err(e) => json::object! {"err" => e.to_string() },
     };
-    // info!("> {}", info.route); // 1/indexes/livros/query | 1/indexes/livros/batch
-    // info!(">> {}", injson.dump());
-    // info!(">>> {}", injson["requests"]);
-    // info!(">>>> {}", injson["query"]);
-    // for x in injson.entries() {
-    //     info!(">>>>> {:?}", x);
-    // }
-
-    // if !injson["requests"].is_null() {
-    //     let request = injson["requests"].clone();
-    //     let route: Vec<&str> = info.route.split("/").into_iter().collect();
-    //     let index_name = route[2].clone();
-    //     info!("searching index: {}", index_name);
-
-    //     let mut index_manager = index_manager.lock().unwrap();
-    //     let index = index_manager.index.get(index_name);
-    //     info!("{}", index_name.clone());
-
-    //     match index {
-    //         Some(index_engine) => match index_engine.lock() {
-    //             Ok(mut ie) => {
-    //                 ie.index_string_document(request.clone().to_string());
-
-    //                 let now = SystemTime::now();
-    //                 let now: DateTime<Utc> = now.into();
-    //                 let now = now.to_rfc3339();
-
-    //                 let rs = object! {
-    //                     updatedAt: now,
-    //                     taskID:1,
-    //                     objectID: "indexed by morocco",
-    //                 };
-
-    //                 return Ok(HttpResponse::Ok()
-    //                     .content_type("application/json")
-    //                     .body(rs.to_string()));
-    //             }
-    //             Err(e) => {
-    //                 return Ok(HttpResponse::BadRequest()
-    //                     .content_type("application/json")
-    //                     .body(format!("msg: err {:?}", e)))
-    //             }
-    //         },
-    //         None => {
-    //             index_manager
-    //                 .create_new_index(index_name.clone().to_string(), request.clone().to_string())
-    //                 .unwrap(); // TODO: improve error handling
-
-    //             return Ok(HttpResponse::Ok()
-    //                 .content_type("application/json")
-    //                 .body(format!(
-    //                     "document {} indexed at {}",
-    //                     request.clone(),
-    //                     index_name.clone()
-    //                 )));
-    //         }
-    //     }
-    // };
 
     if !injson["query"].is_null() {
-        let query = injson["query"].to_string();
+        let query = injson["query"].clone().to_string();
         let re = Regex::new(r"\W+").unwrap();
         let caps: Vec<&str> = re.split(&query).collect();
         let query = caps.join(" ");
 
-        let route: Vec<&str> = info.route.split('/').into_iter().collect();
-        let index_name = route[2];
-        info!("index: {}", index_name);
-        let index = data.index.get(index_name);
+        let index_name = info.route.clone();
+        let index = data.index.get(&index_name);
 
         match index {
-            Some(indexengine) => match indexengine.lock() {
-                Ok(mut ie) => match ie.search(query) {
-                    Ok(payload) => {
-                        let rs = object! {
-                            hits: payload,
-                        };
-                        return Ok(HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(rs.to_string()));
-                    }
-                    Err(e) => {
-                        return Ok(HttpResponse::NoContent()
-                            .content_type("application/json")
-                            .body(e.to_string()))
-                    }
-                },
-                Err(e) => {
-                    return Ok(HttpResponse::BadRequest()
+            Some(index_engine) => match index_engine.lock() {
+                Ok(mut p) => {
+                    let pp = p.search(query);
+                    let rs = object! {
+                        hits: pp.unwrap(),
+                    };
+                    return Ok(HttpResponse::Ok()
                         .content_type("application/json")
-                        .body(format!(
-                            "msg: err fetching data from index {:?} -  {:?}",
-                            index_name, e
-                        )))
+                        .body(rs.to_string()));
+                }
+                Err(e) => {
+                    return Ok(HttpResponse::NoContent()
+                        .content_type("application/json")
+                        .body(e.to_string()))
                 }
             },
             None => {
@@ -149,12 +85,80 @@ async fn catch_post(
                     .content_type("application/json")
                     .body(format!("msg: index [{:?}] not found", index_name)))
             }
-        }
+        };
+    } else {
+        // defaults to not found
+        return Ok(HttpResponse::NotFound()
+            .content_type("application/json")
+            .body(format!("route not found: {}", info.clone().route)));
     }
+}
 
-    return Ok(HttpResponse::Ok()
+#[post("/1/indexes/{route}/batch")]
+async fn batch_index(
+    info: web::Path<PathInfo>,
+    index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    body: web::Bytes,
+) -> Result<HttpResponse, Error> {
+    let result = json::parse(std::str::from_utf8(&body).unwrap());
+    let data = index_manager.lock().unwrap();
+    info!("{}", info.route);
+
+    let injson: JsonValue = match result {
+        Ok(v) => v,
+        Err(e) => json::object! {"err" => e.to_string() },
+    };
+
+    if !injson["requests"].is_null() {
+        let request = injson["requests"].clone();
+        let index_name = info.route.clone();
+        info!("route ok");
+
+        let mut index_manager = index_manager.lock().unwrap();
+        let index = index_manager.index.get(&index_name);
+
+        info!("index ok");
+
+        match index {
+            Some(index_engine) => match index_engine.lock() {
+                Ok(mut ie) => {
+                    ie.index_string_document(request.to_string());
+
+                    let now = SystemTime::now();
+                    let now: DateTime<Utc> = now.into();
+                    let now = now.to_rfc3339();
+
+                    let rs = object! {
+                        updatedAt: now,
+                        taskID:1,
+                        objectID: "indexed by morocco",
+                    };
+                    return Ok(HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(rs.to_string()));
+                }
+                Err(e) => {
+                    return Ok(HttpResponse::BadRequest()
+                        .content_type("application/json")
+                        .body(format!("msg: err {:?}", e)))
+                }
+            },
+            None => {
+                index_manager
+                    .create_new_index(index_name.to_string(), request.to_string())
+                    .unwrap(); // TODO: improve error handling
+
+                return Ok(HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(format!("document {} indexed at {}", request, index_name)));
+            }
+        }
+    };
+
+    // defaults to not found
+    return Ok(HttpResponse::NotFound()
         .content_type("application/json")
-        .body(info.clone().route));
+        .body(format!("index/route not found: {}", info.clone().route)));
 }
 
 // rest search routes
@@ -171,7 +175,6 @@ async fn search_index(
     let index = data.index.get(&info.index);
     let query = query.q.clone();
     debug!("query string: {}", query);
-
     let re = Regex::new(r"\W+").unwrap();
     let caps: Vec<&str> = re.split(&query).collect();
     let query = caps.join(" ");

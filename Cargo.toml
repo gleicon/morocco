@@ -9,6 +9,7 @@ edition = "2021"
 actix-web = "4.1.0"
 chrono = "0.4.20"
 clap = { version = "3.2.17", features = ["derive"]}
+console-subscriber = "0.1.7"
 env_logger = "0.9.0"
 hostname = "0.3.1"
 json = "0.12.4"
