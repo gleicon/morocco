@@ -95,6 +95,8 @@ impl IndexEngine {
         let mut attribute_list: Vec<String> = vec![];
         let mut value_list: Vec<String> = vec![];
         debug!("doc: {}", doc);
+        debug!("schema: {:?}", self.attribute_list);
+
         for tag in doc.entries() {
             println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
