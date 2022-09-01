@@ -29,7 +29,9 @@ pub struct MoroccoOptions {
 async fn main() -> std::io::Result<()> {
     std::env::set_var(
         "RUST_LOG",
-        "actix_web=info,actix_server=info,morocco=info,morocco::handlers=debug,morocco::index_engine=info,morocco::index_manager=info",
+       // "actix_web=info,actix_server=info,morocco=info,morocco::handlers=debug,morocco::index_engine=info,morocco::index_manager=info",
+         "actix_web=debug,actix_server=debug,morocco=debug,morocco::handlers=debug,morocco::index_engine=debug,morocco::index_manager=debug",
+
     );
     env_logger::init();
     info!("Morocco search");
@@ -49,11 +51,13 @@ async fn main() -> std::io::Result<()> {
     let data = web::Data::new(Mutex::new(index_manager::IndexManager::new(
         std::env::current_dir().unwrap(),
     )));
+    let stats = web::Data::new(Mutex::new(stats::SearchStats::new("main".to_string())));
 
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
             .app_data(data.clone())
+            .app_data(stats.clone())
             .service(handlers::search_index)
             .service(handlers::index_document)
             .service(handlers::index_stats)

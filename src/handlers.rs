@@ -101,12 +101,17 @@ async fn batch_index(
     body: web::Bytes,
 ) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
-    let data = index_manager.lock().unwrap();
-    info!("{}", info.route);
+    //let data = index_manager.lock().unwrap();
+    debug!("route: {}", info.route);
+    debug!("payload: {:?}", &result);
 
     let injson: JsonValue = match result {
         Ok(v) => v,
-        Err(e) => json::object! {"err" => e.to_string() },
+        Err(e) => {
+            return Ok(HttpResponse::BadRequest()
+                .content_type("application/json")
+                .body(format!("msg: error {:?}", e)))
+        } //json::object! {"err" => e.to_string() },
     };
 
     if !injson["requests"].is_null() {
@@ -122,7 +127,7 @@ async fn batch_index(
         match index {
             Some(index_engine) => match index_engine.lock() {
                 Ok(mut ie) => {
-                    ie.index_string_document(request.to_string());
+                    ie.index_string_document(request["body"].to_string());
 
                     let now = SystemTime::now();
                     let now: DateTime<Utc> = now.into();

@@ -107,7 +107,10 @@ impl IndexEngine {
             value_list.into_iter().collect::<Vec<String>>().join(",")
         );
 
-        self.db_connection.execute(insert_statement).unwrap();
+        match self.db_connection.execute(insert_statement.clone()) {
+            Ok(v) => debug!("ok: {:?} - {}", v, insert_statement),
+            Err(e) => info!("error: {} - {}", e, insert_statement),
+        };
     }
 
     pub fn create_schema_from_json(&mut self, doc: JsonValue) {
