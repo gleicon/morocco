@@ -23,9 +23,8 @@ const index = client.initIndex('livros');
 const objects = [
   {
     objectID: 1,
-    name: 'Foo',
     title: 'El foo de la fuera',
-    summary: 'El fuero de la fuera fueron fuerar con pontito...'
+    body: 'El fuero de la fuera fueron fuerar con pontito...'
   },
 ];
 

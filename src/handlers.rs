@@ -103,7 +103,7 @@ async fn batch_index(
     let result = json::parse(std::str::from_utf8(&body).unwrap());
     //let data = index_manager.lock().unwrap();
     debug!("route: {}", info.route);
-    debug!("payload: {:?}", &result);
+    debug!("payload: {:?}", &body);
 
     let injson: JsonValue = match result {
         Ok(v) => v,
@@ -127,7 +127,7 @@ async fn batch_index(
         match index {
             Some(index_engine) => match index_engine.lock() {
                 Ok(mut ie) => {
-                    ie.index_string_document(request["body"].to_string());
+                    ie.index_string_document(request[0]["body"].to_string());
 
                     let now = SystemTime::now();
                     let now: DateTime<Utc> = now.into();
