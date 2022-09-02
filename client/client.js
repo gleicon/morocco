@@ -18,7 +18,7 @@ client.transporter.hosts = [stHost, stHost2];
 
 //console.log(client.transporter.hosts);
 
-const index = client.initIndex('livros');
+const index = client.initIndex('poemas');
 
 const objects = [
   {

@@ -131,6 +131,7 @@ impl IndexEngine {
             self.name,
             attribute_list.join(",")
         );
+        debug!("creating table: {}", index_statement);
 
         self.db_connection.execute(index_statement).unwrap();
 
