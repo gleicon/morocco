@@ -150,12 +150,12 @@ async fn batch_index(
             },
             None => {
                 index_manager
-                    .create_new_index(index_name.to_string(), request.to_string())
+                    .create_new_index(index_name.to_string(), request[0]["body"].to_string())
                     .unwrap(); // TODO: improve error handling
 
                 return Ok(HttpResponse::Ok()
                     .content_type("application/json")
-                    .body(format!("document {} indexed at {}", request, index_name)));
+                    .body(request[0]["body"].to_string()));
             }
         }
     };

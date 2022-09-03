@@ -119,10 +119,11 @@ impl IndexEngine {
     pub fn create_schema_from_json(&mut self, doc: JsonValue) {
         let mut attribute_list: Vec<String> = vec![];
         let local_doc = doc.clone();
+        debug!("doc: {}", local_doc);
 
         for tag in local_doc.entries() {
             let tag = tag;
-            println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
+            debug!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
         }
 
@@ -136,7 +137,7 @@ impl IndexEngine {
         self.db_connection.execute(index_statement).unwrap();
 
         self.index_jsonvalue(doc);
-        // self.attribute_list.clone_from_slice(&attribute_list);
+
         self.attribute_list = attribute_list.clone();
     }
 
