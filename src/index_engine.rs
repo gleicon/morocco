@@ -5,6 +5,7 @@ use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+//use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 pub struct IndexEngine {
@@ -18,7 +19,8 @@ pub struct IndexEngine {
 #[derive(Serialize, Deserialize)]
 struct Resultset {
     count: i64,
-    rows: HashMap<String, String>,
+    rows: Vec<String>,
+    attributes: HashMap<String, String>,
 }
 
 impl IndexEngine {
@@ -66,17 +68,22 @@ impl IndexEngine {
             qs
         );
 
-        println!("search: {}", query);
+        debug!("search query: {}", query);
         let mut rs = Resultset {
             count: 0,
-            rows: HashMap::new(),
+            rows: Vec::new(),
+            attributes: HashMap::new(),
         };
         self.db_connection
             .iterate(query, |pairs| {
                 for &(column, value) in pairs.iter() {
-                    rs.rows
+                    debug!("result: {}:{:?}", column, value);
+                    rs.rows.push(format!("{}:{}", column, value.unwrap()));
+
+                    rs.attributes
                         .insert(column.to_string(), value.unwrap().to_string());
                     rs.count += 1;
+                    debug!("----");
                 }
                 true
             })
