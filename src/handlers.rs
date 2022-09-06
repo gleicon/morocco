@@ -46,8 +46,8 @@ async fn query_index(
 ) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
     let data = index_manager.lock().unwrap();
-    info!("index: {}", info.route);
-    info!("body: {:?}", result);
+    debug!("index: {}", info.route);
+    debug!("body: {:?}", result);
 
     let injson: JsonValue = match result {
         Ok(v) => v,
@@ -117,12 +117,9 @@ async fn batch_index(
     if !injson["requests"].is_null() {
         let request = injson["requests"].clone();
         let index_name = info.route.clone();
-        info!("route ok");
 
         let mut index_manager = index_manager.lock().unwrap();
         let index = index_manager.index.get(&index_name);
-
-        info!("index ok");
 
         match index {
             Some(index_engine) => match index_engine.lock() {
@@ -179,7 +176,8 @@ async fn search_index(
     let data = index_manager.lock().unwrap();
     let index = data.index.get(&info.index);
     let query = query.q.clone();
-    debug!("query string: {}", query);
+
+    debug!("raw query string: {}", query);
     let re = Regex::new(r"\W+").unwrap();
     let caps: Vec<&str> = re.split(&query).collect();
     let query = caps.join(" ");
@@ -242,7 +240,6 @@ async fn index_document(
 ) -> Result<HttpResponse, Error> {
     let mut index_manager = index_manager.lock().unwrap();
     let index = index_manager.index.get(&info.index);
-    info!("{}", info.index.clone());
 
     stats
         .lock()

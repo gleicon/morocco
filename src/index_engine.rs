@@ -62,10 +62,7 @@ impl IndexEngine {
     pub fn search(&mut self, qs: String) -> Result<String, serde_json::Error> {
         let query = format!(
             "SELECT * FROM {} WHERE {} MATCH \"{}\"",
-            self.name,
-            self.name,
-            // self.attribute_list.join(","),
-            qs
+            self.name, self.name, qs
         );
 
         debug!("search query: {}", query);
