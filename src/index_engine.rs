@@ -19,8 +19,13 @@ pub struct IndexEngine {
 #[derive(Serialize, Deserialize)]
 struct Resultset {
     count: i64,
-    rows: Vec<HashMap<String, String>>,
+    hits: Vec<HashMap<String, String>>,
     attributes: HashMap<String, String>,
+
+    processingTimeMS: i64,
+    query: String,
+    parsed_query: String,
+    params: String,
 }
 
 impl IndexEngine {
@@ -68,8 +73,12 @@ impl IndexEngine {
         debug!("search query: {}", query);
         let mut rs = Resultset {
             count: 0,
-            rows: Vec::new(),
+            hits: Vec::new(),
             attributes: HashMap::new(),
+            processingTimeMS: 0,
+            query: qs.clone(),
+            parsed_query: qs.clone(),
+            params: qs,
         };
 
         self.db_connection
@@ -83,7 +92,7 @@ impl IndexEngine {
                     //     .insert(column.to_string(), value.unwrap().to_string());
                 }
                 rs.count += 1;
-                rs.rows.push(new_pairs);
+                rs.hits.push(new_pairs);
 
                 true
             })
