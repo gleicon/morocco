@@ -1,11 +1,11 @@
 // index interface
 use chrono::Local;
+use json::array;
 use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-//use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 pub struct IndexEngine {
@@ -19,7 +19,7 @@ pub struct IndexEngine {
 #[derive(Serialize, Deserialize)]
 struct Resultset {
     count: i64,
-    rows: Vec<String>,
+    rows: Vec<HashMap<String, String>>,
     attributes: HashMap<String, String>,
 }
 
@@ -74,17 +74,20 @@ impl IndexEngine {
             rows: Vec::new(),
             attributes: HashMap::new(),
         };
+
         self.db_connection
             .iterate(query, |pairs| {
+                let mut new_pairs: HashMap<String, String> = HashMap::new();
                 for &(column, value) in pairs.iter() {
                     debug!("result: {}:{:?}", column, value);
-                    rs.rows.push(format!("{}:{}", column, value.unwrap()));
+                    new_pairs.insert(column.to_string(), value.unwrap().to_string());
 
-                    rs.attributes
-                        .insert(column.to_string(), value.unwrap().to_string());
-                    rs.count += 1;
-                    debug!("----");
+                    // rs.attributes
+                    //     .insert(column.to_string(), value.unwrap().to_string());
                 }
+                rs.count += 1;
+                rs.rows.push(new_pairs);
+
                 true
             })
             .unwrap();
