@@ -1,10 +1,9 @@
 // index interface
 use chrono::Local;
-use json;
+use json::array;
 use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
-use sqlite;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -20,37 +19,37 @@ pub struct IndexEngine {
 #[derive(Serialize, Deserialize)]
 struct Resultset {
     count: i64,
-    rows: HashMap<String, String>,
+    rows: Vec<HashMap<String, String>>,
+    attributes: HashMap<String, String>,
 }
 
 impl IndexEngine {
-    pub fn to_json(&mut self) -> Result<String, String> {
+    pub fn dump_json(&mut self) -> Result<String, String> {
         let out = object! {
             path: self.path.clone().to_str(),
             name: self.name.clone(),
             version: self.version.clone().to_string(),
-            created_at: self.created_at.clone(),
+            created_at: self.created_at,
             schema: self.attribute_list.clone(),
         };
         Ok(out.dump())
     }
 
     pub fn load_or_create_index(path: PathBuf, name: String) -> Self {
-        let mut path = path.clone();
+        let mut path = path;
 
         if !path.is_file() {
-            path.push(format!("{}.db", name.clone()));
+            path.push(format!("{}.db", name));
         }
 
-        let ie = IndexEngine {
+        IndexEngine {
             path: path.clone(),
-            name: name,
+            name,
             version: Uuid::new_v4(),
             db_connection: sqlite::open(path.clone()).unwrap(),
             created_at: Local::now().timestamp_millis(),
             attribute_list: Vec::new(),
-        };
-        ie
+        }
     } // new index engine
 
     pub fn new(path: PathBuf, name: String, doc: String) -> Self {
@@ -69,18 +68,26 @@ impl IndexEngine {
             qs
         );
 
-        println!("search: {}", query);
+        debug!("search query: {}", query);
         let mut rs = Resultset {
             count: 0,
-            rows: HashMap::new(),
+            rows: Vec::new(),
+            attributes: HashMap::new(),
         };
+
         self.db_connection
             .iterate(query, |pairs| {
+                let mut new_pairs: HashMap<String, String> = HashMap::new();
                 for &(column, value) in pairs.iter() {
-                    rs.rows
-                        .insert(column.to_string(), value.unwrap().to_string());
-                    rs.count += 1;
+                    debug!("result: {}:{:?}", column, value);
+                    new_pairs.insert(column.to_string(), value.unwrap().to_string());
+
+                    // rs.attributes
+                    //     .insert(column.to_string(), value.unwrap().to_string());
                 }
+                rs.count += 1;
+                rs.rows.push(new_pairs);
+
                 true
             })
             .unwrap();
@@ -97,10 +104,13 @@ impl IndexEngine {
     pub fn index_jsonvalue(&mut self, doc: JsonValue) {
         let mut attribute_list: Vec<String> = vec![];
         let mut value_list: Vec<String> = vec![];
+        debug!("doc: {}", doc);
+        debug!("schema: {:?}", self.attribute_list);
+
         for tag in doc.entries() {
             println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
-            value_list.push(format!("'{}'", tag.1.to_string()));
+            value_list.push(format!("'{}'", tag.1));
         }
 
         let insert_statement = format!(
@@ -110,16 +120,20 @@ impl IndexEngine {
             value_list.into_iter().collect::<Vec<String>>().join(",")
         );
 
-        self.db_connection.execute(insert_statement).unwrap();
+        match self.db_connection.execute(insert_statement.clone()) {
+            Ok(v) => debug!("ok: {:?} - {}", v, insert_statement),
+            Err(e) => info!("error: {} - {}", e, insert_statement),
+        };
     }
 
     pub fn create_schema_from_json(&mut self, doc: JsonValue) {
         let mut attribute_list: Vec<String> = vec![];
         let local_doc = doc.clone();
+        debug!("doc: {}", local_doc);
 
         for tag in local_doc.entries() {
-            let tag = tag.clone();
-            println!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
+            let tag = tag;
+            debug!("Element: {:?}: {:?}", tag.0, tag.1.to_string());
             attribute_list.push(tag.0.to_string());
         }
 
@@ -128,11 +142,12 @@ impl IndexEngine {
             self.name,
             attribute_list.join(",")
         );
+        debug!("creating table: {}", index_statement);
 
         self.db_connection.execute(index_statement).unwrap();
 
         self.index_jsonvalue(doc);
-        // self.attribute_list.clone_from_slice(&attribute_list);
+
         self.attribute_list = attribute_list.clone();
     }
 

@@ -18,14 +18,13 @@ client.transporter.hosts = [stHost, stHost2];
 
 //console.log(client.transporter.hosts);
 
-const index = client.initIndex('livros');
+const index = client.initIndex('poemas');
 
 const objects = [
   {
     objectID: 1,
-    name: 'Foo',
     title: 'El foo de la fuera',
-    summary: 'El fuero de la fuera fueron fuerar con pontito...'
+    body: 'El fuero de la fuera fueron fuerar con pontito...'
   },
 ];
 
@@ -35,10 +34,8 @@ index.saveObjects(objects).then(({ objectIDs }) => {
   console.log(JSON.stringify(err, null, 2));
 });
 
-index.search('amigos').then(({ hits }) => {
+index.search('fuera').then(({ hits }) => {
   console.log(hits);
 }).catch(err => {
-  //  console.log(err);
   console.log(JSON.stringify(err, null, 2));
-
 });
