@@ -46,7 +46,7 @@ async fn main() -> std::io::Result<()> {
     info!("Data dir: {:?}", data_dir);
 
     let http_port = cli.http_port.unwrap_or(3000);
-    info!("Http port: {}", http_port);
+    info!("http port: {}", http_port);
 
     let data = web::Data::new(Mutex::new(index_manager::IndexManager::new(
         std::env::current_dir().unwrap(),
