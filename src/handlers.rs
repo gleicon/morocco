@@ -214,7 +214,7 @@ async fn search_index(
                 return Ok(HttpResponse::BadRequest()
                     .content_type("application/json")
                     .body(format!(
-                        "msg: err fetching data from index {:?} -  {:?}",
+                        "msg: error fetching data from index {:?} -  {:?}",
                         info.index, e
                     )));
             }

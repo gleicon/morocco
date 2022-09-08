@@ -78,9 +78,6 @@ impl IndexEngine {
                 for &(column, value) in pairs.iter() {
                     debug!("result: {}:{:?}", column, value);
                     new_pairs.insert(column.to_string(), value.unwrap().to_string());
-
-                    // rs.attributes
-                    //     .insert(column.to_string(), value.unwrap().to_string());
                 }
                 rs.count += 1;
                 rs.rows.push(new_pairs);
