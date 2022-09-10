@@ -30,9 +30,9 @@ pub struct Resultset {
 impl IndexEngine {
     pub fn dump_json(&mut self) -> Result<String, String> {
         let out = object! {
-            path: self.path.clone().to_str(),
+            path: self.path.to_str(),
             name: self.name.clone(),
-            version: self.version.clone().to_string(),
+            version: self.version.to_string(),
             created_at: self.created_at,
             schema: self.attribute_list.clone(),
         };
@@ -94,9 +94,6 @@ impl IndexEngine {
             Ok(_) => Ok(rs),
             Err(e) => Err(format!("err: {}", e)),
         }
-
-        //serde_json::to_string(&rs)
-        // Ok(rs)
     }
 
     pub fn index_string_document(&mut self, body: String) {

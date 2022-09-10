@@ -70,7 +70,7 @@ async fn query_index(
                     let rs = serde_json::to_string(&pp.unwrap());
 
                     let rs = object! {
-                        results: rs.unwrap(),
+                        hits: rs.unwrap(),
                     };
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
@@ -125,7 +125,8 @@ async fn batch_index(
         match index {
             Some(index_engine) => match index_engine.lock() {
                 Ok(mut ie) => {
-                    ie.index_string_document(request[0]["body"].to_string());
+                    //ie.index_string_document(request[0]["body"].to_string());
+                    ie.index_jsonvalue(request[0]["body"].clone());
 
                     let now = SystemTime::now();
                     let now: DateTime<Utc> = now.into();
@@ -134,7 +135,7 @@ async fn batch_index(
                     let rs = object! {
                         updatedAt: now,
                         taskID:1,
-                        objectID: "indexed by morocco",
+                        objectIDs: [request[0]["body"]["ObjectID"].clone()],
                     };
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
