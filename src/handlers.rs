@@ -67,8 +67,10 @@ async fn query_index(
             Some(index_engine) => match index_engine.lock() {
                 Ok(mut p) => {
                     let pp = p.search(query);
+                    let rs = serde_json::to_string(&pp.unwrap());
+
                     let rs = object! {
-                        hits: pp.unwrap(),
+                        results: rs.unwrap(),
                     };
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
@@ -101,7 +103,6 @@ async fn batch_index(
     body: web::Bytes,
 ) -> Result<HttpResponse, Error> {
     let result = json::parse(std::str::from_utf8(&body).unwrap());
-    //let data = index_manager.lock().unwrap();
     debug!("route: {}", info.route);
     debug!("payload: {:?}", &body);
 
@@ -192,9 +193,14 @@ async fn search_index(
                         .lock()
                         .unwrap()
                         .increment_index_usage_counter(info.index.clone());
+                    let rs = serde_json::to_string(&payload);
+
+                    let rs = object! {
+                        results: rs.unwrap(),
+                    };
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
-                        .body(payload));
+                        .body(rs.to_string()));
                 }
                 Err(e) => {
                     stats

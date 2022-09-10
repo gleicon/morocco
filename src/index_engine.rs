@@ -1,6 +1,5 @@
 // index interface
 use chrono::Local;
-use json::array;
 use json::object;
 use json::JsonValue;
 use serde::{Deserialize, Serialize};
@@ -17,12 +16,12 @@ pub struct IndexEngine {
     attribute_list: Vec<String>,
 }
 #[derive(Serialize, Deserialize)]
-struct Resultset {
+pub struct Resultset {
     count: i64,
     hits: Vec<HashMap<String, String>>,
     attributes: HashMap<String, String>,
 
-    processingTimeMS: i64,
+    processing_time_ms: i64,
     query: String,
     parsed_query: String,
     params: String,
@@ -64,7 +63,7 @@ impl IndexEngine {
         ie
     } // new index engine
 
-    pub fn search(&mut self, qs: String) -> Result<String, serde_json::Error> {
+    pub fn search(&mut self, qs: String) -> Result<Resultset, String> {
         let query = format!(
             "SELECT * FROM {} WHERE {} MATCH \"{}\"",
             self.name, self.name, qs
@@ -75,27 +74,29 @@ impl IndexEngine {
             count: 0,
             hits: Vec::new(),
             attributes: HashMap::new(),
-            processingTimeMS: 0,
+            processing_time_ms: 0,
             query: qs.clone(),
             parsed_query: qs.clone(),
             params: qs,
         };
 
-        self.db_connection
-            .iterate(query, |pairs| {
-                let mut new_pairs: HashMap<String, String> = HashMap::new();
-                for &(column, value) in pairs.iter() {
-                    debug!("result: {}:{:?}", column, value);
-                    new_pairs.insert(column.to_string(), value.unwrap().to_string());
-                }
-                rs.count += 1;
-                rs.hits.push(new_pairs);
+        match self.db_connection.iterate(query, |pairs| {
+            let mut new_pairs: HashMap<String, String> = HashMap::new();
+            for &(column, value) in pairs.iter() {
+                debug!("result: {}:{:?}", column, value);
+                new_pairs.insert(column.to_string(), value.unwrap().to_string());
+            }
+            rs.count += 1;
+            rs.hits.push(new_pairs);
 
-                true
-            })
-            .unwrap();
+            true
+        }) {
+            Ok(_) => Ok(rs),
+            Err(e) => Err(format!("err: {}", e)),
+        }
 
-        serde_json::to_string(&rs)
+        //serde_json::to_string(&rs)
+        // Ok(rs)
     }
 
     pub fn index_string_document(&mut self, body: String) {
