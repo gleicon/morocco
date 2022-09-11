@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+actix-cors = "0.6.2"
 actix-web = "4.1.0"
 chrono = "0.4.20"
 clap = { version = "3.2.17", features = ["derive"]}

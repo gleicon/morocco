@@ -1,4 +1,4 @@
-use actix_web::{get, post, Error, Result};
+use actix_web::{get, post, route, Error, Result};
 use actix_web::{web, HttpResponse};
 use chrono::DateTime;
 use chrono::Utc;
@@ -30,15 +30,15 @@ struct DocumentInfo {
 // top terms
 
 // catch all routes for client compatibility
-#[get("/{route:.*}")]
-async fn catch_get(info: web::Path<PathInfo>) -> Result<HttpResponse, Error> {
-    info!("{}", info.route);
-    return Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(info.clone().route));
-}
+// #[get("/{route:.*}")]
+// async fn catch_get(info: web::Path<PathInfo>) -> Result<HttpResponse, Error> {
+//     info!("{}", info.route);
+//     return Ok(HttpResponse::Ok()
+//         .content_type("application/json")
+//         .body(info.clone().route));
+// }
 
-#[post("/1/indexes/{route}/query")]
+#[route("/1/indexes/{route}/query", method = "POST", method = "GET")]
 async fn query_index(
     info: web::Path<PathInfo>,
     index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,

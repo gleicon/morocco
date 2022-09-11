@@ -2,13 +2,13 @@ const algoliasearch = require('algoliasearch');
 
 const stHost = {
   protocol: 'http',
-  url: 'localhost:3000',
+  url: '127.0.0.1:3000',
   accept: 1
 };
 
 const stHost2 = {
   protocol: 'http',
-  url: 'localhost:3000',
+  url: '127.0.0.1:3000',
   accept: 2
 };
 
