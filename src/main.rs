@@ -74,6 +74,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::index_document)
             .service(handlers::index_stats)
             //.service(handlers::catch_get)
+            .service(handlers::group_index)
             .service(handlers::query_index)
             .service(handlers::batch_index)
     })

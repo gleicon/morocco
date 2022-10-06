@@ -96,6 +96,19 @@ async fn query_index(
     }
 }
 
+#[post("/1/indexes/*/queries")]
+async fn group_index(
+    // info: web::Path<PathInfo>,
+    _index_manager: web::Data<Mutex<crate::index_manager::IndexManager>>,
+    body: web::Bytes,
+) -> Result<HttpResponse, Error> {
+    // debug!("route: {}", info.route);
+    debug!("payload: {:?}", &body);
+    return Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body("nh"));
+}
+
 #[post("/1/indexes/{route}/batch")]
 async fn batch_index(
     info: web::Path<PathInfo>,
